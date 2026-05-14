@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EmpeñoApp — Casa de Empeño</title>
+<meta name="description" content="Sistema de gestión para casa de empeño. Empeños, renovaciones, inventario y reportes.">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EmpeñoApp">
+<meta property="og:title" content="EmpeñoApp — Casa de Empeño">
+<meta property="og:description" content="Gestión profesional de casa de empeño">
+<meta property="og:type" content="website">
+<meta property="og:image" content="icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{
+  --primary:#c9a84c;--primary-dark:#a8872e;--primary-light:#f0d080;
+  --bg:#0d0d1a;--bg2:#1a1a2e;--bg3:#16213e;--card:#1e1e35;--card2:#252545;
+  --text:#f0f0f0;--text2:#aaa;--text3:#666;
+  --green:#2ecc71;--red:#e74c3c;--orange:#f39c12;--blue:#3498db;
+  --border:rgba(201,168,76,0.2);--radius:12px;--shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,#0d0d1a,#1a1a2e,#0d0d1a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s;}
+#splash .logo-icon{font-size:72px;margin-bottom:16px;animation:pulse 2s infinite;}
+#splash h1{font-size:28px;color:var(--primary);font-weight:700;letter-spacing:2px;}
+#splash p{color:var(--text2);margin-top:8px;font-size:14px;}
+#splash .loading-bar{width:200px;height:3px;background:var(--bg3);border-radius:4px;margin-top:32px;overflow:hidden;}
+#splash .loading-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--primary-light));border-radius:4px;animation:load 2s ease-in-out forwards;}
+@keyframes load{from{width:0}to{width:100%}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+#pin-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;}
+#pin-screen h2{color:var(--primary);font-size:22px;margin-bottom:8px;}
+#pin-screen p{color:var(--text2);font-size:13px;text-align:center;margin-bottom:32px;}
+.pin-dots{display:flex;gap:16px;margin-bottom:32px;}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--primary);background:transparent;transition:.2s;}
+.pin-dot.filled{background:var(--primary);}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:240px;}
+.pin-btn{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;font-size:22px;font-weight:600;color:var(--text);cursor:pointer;transition:.15s;text-align:center;}
+.pin-btn:active{background:var(--primary);color:#000;transform:scale(0.95);}
+.pin-error{color:var(--red);font-size:13px;margin-top:12px;min-height:20px;}
+#app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.topbar-logo{font-size:22px;}
+.topbar-title{font-size:16px;font-weight:700;color:var(--primary);}
+.topbar-subtitle{font-size:11px;color:var(--text2);}
+.topbar-right{display:flex;gap:8px;}
+.icon-btn{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:6px;border-radius:8px;transition:.2s;}
+.icon-btn:hover{background:var(--card);color:var(--primary);}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);display:flex;z-index:100;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;cursor:pointer;transition:.2s;gap:3px;border:none;background:none;color:var(--text3);}
+.nav-item.active{color:var(--primary);}
+.nav-item .nav-icon{font-size:20px;}
+.nav-item .nav-label{font-size:10px;font-weight:500;}
+.content{flex:1;padding:16px;padding-bottom:80px;overflow-y:auto;}
+.section{display:none;}
+.section.active{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px;}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.card-title{font-size:14px;font-weight:600;color:var(--primary);}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center;}
+.stat-value{font-size:22px;font-weight:700;color:var(--primary);}
+.stat-label{font-size:11px;color:var(--text2);margin-top:4px;}
+.stat-icon{font-size:20px;margin-bottom:4px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:.2s;text-decoration:none;}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#000;}
+.btn-primary:active{transform:scale(0.97);}
+.btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--border);}
+.btn-danger{background:rgba(231,76,60,0.15);color:var(--red);border:1px solid rgba(231,76,60,0.3);}
+.btn-success{background:rgba(46,204,113,0.15);color:var(--green);border:1px solid rgba(46,204,113,0.3);}
+.btn-warning{background:rgba(243,156,18,0.15);color:var(--orange);border:1px solid rgba(243,156,18,0.3);}
+.btn-sm{padding:7px 14px;font-size:12px;}
+.btn-full{width:100%;}
+.form-group{margin-bottom:14px;}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:500;}
+input,select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px 12px;color:var(--text);font-size:14px;outline:none;transition:.2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(201,168,76,0.15);}
+textarea{resize:vertical;min-height:70px;}
+select option{background:var(--bg3);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-active{background:rgba(46,204,113,0.15);color:var(--green);}
+.badge-overdue{background:rgba(231,76,60,0.15);color:var(--red);}
+.badge-near{background:rgba(243,156,18,0.15);color:var(--orange);}
+.badge-redeemed{background:rgba(52,152,219,0.15);color:var(--blue);}
+.list-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:8px;cursor:pointer;transition:.2s;}
+.list-item:hover{border-color:var(--primary);background:var(--card2);}
+.item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.item-title{font-size:14px;font-weight:600;}
+.item-subtitle{font-size:12px;color:var(--text2);}
+.item-meta{font-size:11px;color:var(--text3);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:500;display:flex;align-items:flex-end;justify-content:center;}
+.modal{background:var(--bg2);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:20px;padding-bottom:32px;animation:slideUp .3s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-title{font-size:18px;font-weight:700;color:var(--primary);}
+.modal-close{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;padding:4px;}
+.tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--radius);padding:4px;margin-bottom:16px;}
+.tab{flex:1;text-align:center;padding:8px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:none;transition:.2s;}
+.tab.active{background:var(--primary);color:#000;}
+.search-bar{position:relative;margin-bottom:14px;}
+.search-bar input{padding-left:38px;}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text3);}
+.fab{position:fixed;bottom:76px;right:20px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#000;border:none;border-radius:50%;width:54px;height:54px;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(201,168,76,0.4);z-index:200;display:flex;align-items:center;justify-content:center;transition:.2s;}
+.fab:active{transform:scale(0.95);}
+.photo-preview{width:100%;height:160px;border:2px dashed var(--border);border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:8px;color:var(--text2);font-size:13px;overflow:hidden;}
+.photo-preview img{width:100%;height:100%;object-fit:cover;}
+.empty{text-align:center;padding:48px 20px;color:var(--text2);}
+.empty-icon{font-size:48px;margin-bottom:16px;}
+.habeas{background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.15);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.5;}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;}
+.alert-warning{background:rgba(243,156,18,0.1);border:1px solid rgba(243,156,18,0.3);color:var(--orange);}
+.alert-danger{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);color:var(--red);}
+.alert-success{background:rgba(46,204,113,0.1);border:1px solid rgba(46,204,113,0.3);color:var(--green);}
+.detail-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;}
+.detail-row:last-child{border-bottom:none;}
+.detail-label{color:var(--text2);}
+.detail-value{font-weight:500;text-align:right;max-width:60%;}
+.config-section{margin-bottom:20px;}
+.config-section h3{font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.ticket{background:var(--card);border:2px dashed var(--border);border-radius:var(--radius);padding:16px;font-family:monospace;font-size:12px;line-height:1.8;}
+.ticket-header{text-align:center;margin-bottom:12px;}
+.ticket-header h3{font-size:16px;color:var(--primary);}
+.ticket-divider{border:none;border-top:1px dashed var(--border);margin:10px 0;}
+.footer-brand{text-align:center;padding:12px;font-size:10px;color:var(--text3);}
+@media(min-width:600px){
+  .stats-grid{grid-template-columns:repeat(4,1fr);}
+  .modal{border-radius:var(--radius);align-self:center;margin:20px;}
+}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="logo-icon">💎</div>
+  <h1>EmpeñoApp</h1>
+  <p>Sistema de Gestión de Casa de Empeño</p>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<div id="pin-screen" style="display:none;">
+  <div style="font-size:48px;margin-bottom:12px;">🔐</div>
+  <h2>Acceso Seguro</h2>
+  <p>Ingresa tu PIN de 4 dígitos<br>para continuar</p>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-pad">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn" onclick="pinPress('C')" style="font-size:16px;">⌫</button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn" onclick="pinPress('OK')" style="font-size:14px;color:var(--primary);">✓</button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <p style="margin-top:24px;font-size:11px;color:var(--text3);">PIN por defecto: 1234</p>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-logo">💎</span>
+      <div>
+        <div class="topbar-title" id="topbar-biz-name">EmpeñoApp</div>
+        <div class="topbar-subtitle" id="topbar-date"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="goConfig()">⚙️</button>
+      <button class="icon-btn" onclick="lockApp()">🔒</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="section active" id="sec-dashboard">
+      <div id="alerts-container"></div>
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">⏳ Por vencer pronto</span>
+          <span id="near-count" style="font-size:12px;color:var(--orange);"></span>
+        </div>
+        <div id="near-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">📋 Últimos empeños</span></div>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-empenos">
+      <div class="tabs">
+        <button class="tab active" onclick="filterEmpenos('activos',this)">Activos</button>
+        <button class="tab" onclick="filterEmpenos('vencidos',this)">Vencidos</button>
+        <button class="tab" onclick="filterEmpenos('rescatados',this)">Rescatados</button>
+        <button class="tab" onclick="filterEmpenos('todos',this)">Todos</button>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar por cliente, artículo o #ticket..." id="search-empenos" oninput="renderEmpenos()">
+      </div>
+      <div id="empenos-list"></div>
+    </div>
+
+    <div class="section" id="sec-clientes">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar cliente..." id="search-clientes" oninput="renderClientes()">
+      </div>
+      <div id="clientes-list"></div>
+    </div>
+
+    <div class="section" id="sec-inventario">
+      <div class="tabs">
+        <button class="tab active" onclick="filterInv('en-custodia',this)">En custodia</button>
+        <button class="tab" onclick="filterInv('rescatados',this)">Rescatados</button>
+        <button class="tab" onclick="filterInv('vencidos',this)">Vencidos</button>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Buscar artículo..." id="search-inv" oninput="renderInventario()">
+      </div>
+      <div id="inventario-list"></div>
+    </div>
+
+    <div class="section" id="sec-reportes">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📅 Rango de fechas</span></div>
+        <div class="form-row">
+          <div class="form-group"><label>Desde</label><input type="date" id="rpt-desde"></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="rpt-hasta"></div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="generarReporte()">📊 Generar reporte</button>
+      </div>
+      <div id="reporte-resultado"></div>
+    </div>
+
+    <div class="section" id="sec-config">
+      <div class="config-section">
+        <h3>🏢 Negocio</h3>
+        <div class="card">
+          <div class="form-group"><label>Nombre del negocio</label><input type="text" id="cfg-nombre" placeholder="Casa de Empeño..."></div>
+          <div class="form-group"><label>Dirección</label><input type="text" id="cfg-dir" placeholder="Calle 1 # 2-3"></div>
+          <div class="form-group"><label>Teléfono / WhatsApp</label><input type="text" id="cfg-tel" placeholder="300..."></div>
+          <div class="form-group"><label>NIT / CC propietario</label><input type="text" id="cfg-nit"></div>
+        </div>
+      </div>
+      <div class="config-section">
+        <h3>💰 Intereses y plazos</h3>
+        <div class="card">
+          <div class="form-group"><label>Tasa mensual por defecto (%)</label><input type="number" id="cfg-tasa" step="0.5" min="0" max="100" placeholder="10"></div>
+          <div class="form-group"><label>Plazo por defecto (días)</label><input type="number" id="cfg-plazo" step="1" min="1" placeholder="30"></div>
+          <div class="form-group"><label>Alertar cuando falten (días)</label><input type="number" id="cfg-gracia" step="1" min="0" placeholder="5"></div>
+          <div class="alert alert-warning">⚠️ Verifique que su tasa no supere la Tasa de Usura vigente certificada por la Superfinanciera de Colombia.</div>
+        </div>
+      </div>
+      <div class="config-section">
+        <h3>🔐 Seguridad</h3>
+        <div class="card">
+          <div class="form-group"><label>Nuevo PIN (4 dígitos)</label><input type="password" id="cfg-pin" maxlength="4" placeholder="Dejar vacío para no cambiar"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="guardarConfig()">💾 Guardar configuración</button>
+      <div style="height:12px;"></div>
+      <button class="btn btn-secondary btn-full" onclick="exportarTodo()">📤 Exportar backup (JSON)</button>
+      <div style="height:8px;"></div>
+      <button class="btn btn-secondary btn-full" onclick="document.getElementById('imp-file').click()">📥 Importar backup</button>
+      <input type="file" id="imp-file" accept=".json" style="display:none" onchange="importarBackup(this)">
+      <div class="footer-brand" style="margin-top:24px;">Desarrollada por Vibras Positivas HM — Derechos de Autor Reservados</div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard',this)">
+      <span class="nav-icon">🏠</span><span class="nav-label">Inicio</span>
+    </button>
+    <button class="nav-item" id="nav-empenos" onclick="showSection('empenos',this)">
+      <span class="nav-icon">📋</span><span class="nav-label">Empeños</span>
+    </button>
+    <button class="nav-item" id="nav-clientes" onclick="showSection('clientes',this)">
+      <span class="nav-icon">👥</span><span class="nav-label">Clientes</span>
+    </button>
+    <button class="nav-item" id="nav-inventario" onclick="showSection('inventario',this)">
+      <span class="nav-icon">📦</span><span class="nav-label">Artículos</span>
+    </button>
+    <button class="nav-item" id="nav-reportes" onclick="showSection('reportes',this)">
+      <span class="nav-icon">📊</span><span class="nav-label">Reportes</span>
+    </button>
+  </nav>
+
+  <button class="fab" id="fab-btn" onclick="showFabAction()">＋</button>
+</div>
+
+<div id="modal-container"></div>
+
+<script>
+const DB={
+  get:k=>{try{return JSON.parse(localStorage.getItem('emp_'+k)||'null')}catch(e){return null}},
+  set:(k,v)=>localStorage.setItem('emp_'+k,JSON.stringify(v)),
+  empenos:()=>DB.get('empenos')||[],
+  clientes:()=>DB.get('clientes')||[],
+  config:()=>DB.get('config')||{nombre:'Casa de Empeño',dir:'',tel:'',nit:'',tasa:10,plazo:30,gracia:5,pin:'1234'}
+};
+let curFilter={empenos:'activos',inv:'en-custodia'};
+let curSection='dashboard';
+
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    document.getElementById('splash').style.opacity='0';
+    setTimeout(()=>{
+      document.getElementById('splash').style.display='none';
+      showPinScreen();
+    },500);
+  },2000);
+});
+
+// ---- PIN ----
+let pinInput='';
+function showPinScreen(){
+  document.getElementById('pin-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  pinInput='';updatePinDots();
+}
+function pinPress(k){
+  if(k==='C'){pinInput=pinInput.slice(0,-1);}
+  else if(k==='OK'){validatePin();return;}
+  else if(pinInput.length<4){pinInput+=k;}
+  updatePinDots();
+  if(pinInput.length===4)validatePin();
+}
+function updatePinDots(){
+  for(let i=0;i<4;i++)document.getElementById('d'+i).classList.toggle('filled',i<pinInput.length);
+}
+function validatePin(){
+  const cfg=DB.config();
+  if(pinInput===(cfg.pin||'1234')){
+    document.getElementById('pin-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    document.getElementById('app').style.flexDirection='column';
+    initApp();
+  }else{
+    document.getElementById('pin-error').textContent='❌ PIN incorrecto. Intenta de nuevo.';
+    pinInput='';updatePinDots();
+    setTimeout(()=>document.getElementById('pin-error').textContent='',2500);
+  }
+}
+function lockApp(){
+  if(!confirm('¿Bloquear aplicación?'))return;
+  document.getElementById('app').style.display='none';
+  showPinScreen();
+}
+
+// ---- INIT ----
+function initApp(){
+  const cfg=DB.config();
+  document.getElementById('topbar-biz-name').textContent=cfg.nombre||'EmpeñoApp';
+  document.getElementById('topbar-date').textContent=fmtDateCO(new Date());
+  loadConfigFields();
+  showSection('dashboard');
+}
+function nowCO(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/Bogota'}));}
+function fmtDateCO(d){return d.toLocaleDateString('es-CO',{weekday:'short',day:'2-digit',month:'short',year:'numeric',timeZone:'America/Bogota'});}
+function fmtDateShort(s){if(!s)return'';return new Date(s+'T00:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'short'});}
+function fmtMoney(n){return '$'+Number(n||0).toLocaleString('es-CO');}
+function uid(){return Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,3).toUpperCase();}
+function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+
+// ---- SECTIONS ----
+function showSection(name,navEl){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const sec=document.getElementById('sec-'+name);
+  if(sec)sec.classList.add('active');
+  if(navEl)navEl.classList.add('active');
+  else{const nb=document.getElementById('nav-'+name);if(nb)nb.classList.add('active');}
+  curSection=name;
+  const fab=document.getElementById('fab-btn');
+  fab.style.display=['dashboard','empenos','clientes'].includes(name)?'flex':'none';
+  if(name==='dashboard')renderDashboard();
+  if(name==='empenos')renderEmpenos();
+  if(name==='clientes')renderClientes();
+  if(name==='inventario')renderInventario();
+  if(name==='reportes')initReportes();
+}
+function goConfig(){showSection('config',null);}
+function showFabAction(){
+  if(curSection==='dashboard'||curSection==='empenos')openModalEmpeno();
+  else if(curSection==='clientes')openModalCliente();
+}
+
+// ---- DASHBOARD ----
+function renderDashboard(){
+  const empenos=DB.empenos();
+  const hoy=nowCO();
+  const cfg=DB.config();
+  const activos=empenos.filter(e=>e.estado==='activo');
+  const vencidos=activos.filter(e=>new Date(e.fecha_vence+'T00:00:00')<hoy);
+  const hoyEmpenos=empenos.filter(e=>sameDay(new Date(e.fecha_empeno+'T00:00:00'),hoy));
+  const hoyRescatados=empenos.filter(e=>e.estado==='rescatado'&&e.fecha_rescate&&sameDay(new Date(e.fecha_rescate+'T00:00:00'),hoy));
+  const hoyPrestado=hoyEmpenos.reduce((s,e)=>s+e.monto_prestado,0);
+  const hoyRecuperado=hoyRescatados.reduce((s,e)=>s+(e.total_cobrado||0),0);
+  const near=activos.filter(e=>{
+    const dias=Math.ceil((new Date(e.fecha_vence+'T00:00:00')-hoy)/(864e5));
+    return dias>=0&&dias<=(cfg.gracia||5);
+  });
+  document.getElementById('stats-grid').innerHTML=`
+    <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${activos.length}</div><div class="stat-label">Empeños activos</div></div>
+    <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-value" style="color:var(--red)">${vencidos.length}</div><div class="stat-label">Vencidos</div></div>
+    <div class="stat-card"><div class="stat-icon">💵</div><div class="stat-value" style="font-size:15px">${fmtMoney(hoyPrestado)}</div><div class="stat-label">Prestado hoy</div></div>
+    <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value" style="font-size:15px">${fmtMoney(hoyRecuperado)}</div><div class="stat-label">Recuperado hoy</div></div>
+  `;
+  let ah='';
+  if(vencidos.length>0)ah+=`<div class="alert alert-danger">🚨 ${vencidos.length} empeño(s) vencido(s). Requieren gestión inmediata.</div>`;
+  if(near.length>0)ah+=`<div class="alert alert-warning">⏰ ${near.length} empeño(s) vence(n) en los próximos ${cfg.gracia||5} días.</div>`;
+  document.getElementById('alerts-container').innerHTML=ah;
+  document.getElementById('near-count').textContent=near.length>0?near.length+' pendientes':'';
+  document.getElementById('near-list').innerHTML=near.length===0?'<div style="font-size:13px;color:var(--text2);padding:8px 0">Sin empeños próximos a vencer.</div>':
+    near.map(e=>{const d=Math.ceil((new Date(e.fecha_vence+'T00:00:00')-hoy)/864e5);
+      return `<div class="list-item" onclick="verEmpeno('${e.id}')">
+        <div class="item-header"><span class="item-title">${e.articulo}</span><span class="badge badge-near">${d===0?'Vence hoy':d+' días'}</span></div>
+        <div class="item-subtitle">👤 ${e.cliente_nombre}</div>
+        <div class="item-meta"><span>🎫 #${e.ticket}</span><span>💰 ${fmtMoney(e.monto_prestado)}</span></div>
+      </div>`;}).join('');
+  const rec=[...empenos].sort((a,b)=>new Date(b.fecha_empeno)-new Date(a.fecha_empeno)).slice(0,5);
+  document.getElementById('recent-list').innerHTML=rec.length===0?'<div style="font-size:13px;color:var(--text2)">Sin movimientos aún.</div>':
+    rec.map(e=>`<div class="list-item" onclick="verEmpeno('${e.id}')">
+      <div class="item-header"><span class="item-title">${e.articulo}</span><span class="badge badge-${e.estado==='activo'?'active':e.estado==='rescatado'?'redeemed':'overdue'}">${e.estado}</span></div>
+      <div class="item-subtitle">👤 ${e.cliente_nombre}</div>
+      <div class="item-meta"><span>📅 ${fmtDateShort(e.fecha_empeno)}</span><span>💰 ${fmtMoney(e.monto_prestado)}</span></div>
+    </div>`).join('');
+}
+
+// ---- EMPEÑOS ----
+function calcInteres(monto,tasa,dias){return Math.round(monto*((tasa/100)/30)*dias);}
+function filterEmpenos(f,el){
+  curFilter.empenos=f;
+  document.querySelectorAll('#sec-empenos .tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderEmpenos();
+}
+function renderEmpenos(){
+  let emp=DB.empenos();const hoy=nowCO();
+  const q=(document.getElementById('search-empenos')?.value||'').toLowerCase();
+  const f=curFilter.empenos;
+  if(f==='activos')emp=emp.filter(e=>e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')>=hoy);
+  else if(f==='vencidos')emp=emp.filter(e=>e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')<hoy);
+  else if(f==='rescatados')emp=emp.filter(e=>e.estado==='rescatado');
+  if(q)emp=emp.filter(e=>(e.cliente_nombre+e.articulo+e.ticket).toLowerCase().includes(q));
+  emp=emp.sort((a,b)=>new Date(b.fecha_empeno)-new Date(a.fecha_empeno));
+  const el=document.getElementById('empenos-list');
+  if(!emp.length){el.innerHTML='<div class="empty"><div class="empty-icon">📭</div><p>Sin empeños en esta categoría</p></div>';return;}
+  el.innerHTML=emp.map(e=>{
+    const v=e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')<hoy;
+    const d=Math.ceil((new Date(e.fecha_vence+'T00:00:00')-hoy)/864e5);
+    const badge=e.estado==='rescatado'?'badge-redeemed':v?'badge-overdue':d<=5?'badge-near':'badge-active';
+    const lbl=e.estado==='rescatado'?'Rescatado':v?'⚠️ Vencido':'Activo';
+    return`<div class="list-item" onclick="verEmpeno('${e.id}')">
+      <div class="item-header"><span class="item-title">${e.articulo}</span><span class="badge ${badge}">${lbl}</span></div>
+      <div class="item-subtitle">👤 ${e.cliente_nombre}</div>
+      <div class="item-meta"><span>🎫 #${e.ticket}</span><span>💰 ${fmtMoney(e.monto_prestado)}</span><span>📅 Vence: ${fmtDateShort(e.fecha_vence)}</span></div>
+    </div>`;}).join('');
+}
+
+// ---- VER EMPEÑO ----
+function verEmpeno(id){
+  const e=DB.empenos().find(x=>x.id===id);if(!e)return;
+  const cfg=DB.config();const hoy=nowCO();
+  const dias=Math.ceil((hoy-new Date(e.fecha_empeno+'T00:00:00'))/864e5);
+  const intAcum=calcInteres(e.monto_prestado,e.tasa_mensual||cfg.tasa,dias);
+  const totalPagar=e.monto_prestado+intAcum;
+  const vencido=e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')<hoy;
+  const html=`
+    <div class="modal-header">
+      <span class="modal-title">🎫 Empeño #${e.ticket}</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="ticket">
+      <div class="ticket-header">
+        <h3>${cfg.nombre||'Casa de Empeño'}</h3>
+        ${cfg.dir?`<div style="color:var(--text2);font-size:11px">${cfg.dir}${cfg.tel?' | Tel: '+cfg.tel:''}</div>`:''}
+      </div>
+      <hr class="ticket-divider">
+      <div>TICKET: <b>#${e.ticket}</b></div>
+      <div>CLIENTE: ${e.cliente_nombre}</div>
+      <div>DOC: ${'*'.repeat(Math.max(0,String(e.cliente_doc).length-4))+String(e.cliente_doc).slice(-4)}</div>
+      <div>ARTÍCULO: ${e.articulo}</div>
+      ${e.descripcion?`<div>DESC: ${e.descripcion}</div>`:''}
+      <hr class="ticket-divider">
+      <div>MONTO PRESTADO: ${fmtMoney(e.monto_prestado)}</div>
+      <div>FECHA EMPEÑO: ${e.fecha_empeno}</div>
+      <div>FECHA VENCE: ${e.fecha_vence}</div>
+      <div>PLAZO: ${e.plazo_dias} días</div>
+      <div>TASA: ${e.tasa_mensual}% mensual</div>
+      ${e.renovaciones>0?`<div>RENOVACIONES: ${e.renovaciones}</div>`:''}
+      <hr class="ticket-divider">
+      <div>DÍAS TRANSCURRIDOS: ${dias}</div>
+      <div>INTERÉS ACUMULADO: ${fmtMoney(intAcum)}</div>
+      <div style="font-weight:700;color:var(--primary)">TOTAL A PAGAR HOY: ${fmtMoney(totalPagar)}</div>
+      <hr class="ticket-divider">
+      <div>ESTADO: ${e.estado.toUpperCase()}${vencido?' ⚠️':''}</div>
+      ${e.estado==='rescatado'?`<div>RESCATADO: ${e.fecha_rescate||''}</div><div>TOTAL COBRADO: ${fmtMoney(e.total_cobrado)}</div>`:''}
+    </div>
+    ${e.foto?`<img src="${e.foto}" style="width:100%;border-radius:var(--radius);margin-top:12px;max-height:200px;object-fit:cover;">`:''}
+    <div style="height:12px"></div>
+    ${e.estado==='activo'?`
+      <div class="form-row">
+        <button class="btn btn-success" onclick="rescatarEmpeno('${e.id}')">✅ Rescatar</button>
+        <button class="btn btn-warning" onclick="renovarEmpeno('${e.id}')">🔄 Renovar</button>
+      </div>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary btn-full" onclick="imprimirTicket('${e.id}')">🖨️ Imprimir ticket</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-danger btn-full" onclick="eliminarEmpeno('${e.id}')">🗑️ Eliminar empeño</button>
+    `:`<button class="btn btn-secondary btn-full" onclick="imprimirTicket('${e.id}')">🖨️ Ver / imprimir ticket</button>`}
+  `;
+  showModal(html);
+}
+
+function rescatarEmpeno(id){
+  const emp=DB.empenos();const e=emp.find(x=>x.id===id);if(!e)return;
+  const cfg=DB.config();const hoy=nowCO();
+  const dias=Math.ceil((hoy-new Date(e.fecha_empeno+'T00:00:00'))/864e5);
+  const interes=calcInteres(e.monto_prestado,e.tasa_mensual||cfg.tasa,dias);
+  const total=e.monto_prestado+interes;
+  if(!confirm(`Rescate de Empeño #${e.ticket}\n\nCapital: ${fmtMoney(e.monto_prestado)}\nIntereses (${dias} días): ${fmtMoney(interes)}\n\n✅ TOTAL A COBRAR: ${fmtMoney(total)}\n\n¿Confirmar cobro y cierre?`))return;
+  e.estado='rescatado';
+  e.fecha_rescate=hoy.toISOString().split('T')[0];
+  e.intereses_pagados=interes;
+  e.total_cobrado=total;
+  DB.set('empenos',emp);
+  closeModal();renderEmpenos();renderDashboard();
+  alert(`✅ Empeño #${e.ticket} rescatado.\nTotal cobrado: ${fmtMoney(total)}`);
+}
+
+function renovarEmpeno(id){
+  const emp=DB.empenos();const e=emp.find(x=>x.id===id);if(!e)return;
+  const cfg=DB.config();const hoy=nowCO();
+  const dias=Math.ceil((hoy-new Date(e.fecha_empeno+'T00:00:00'))/864e5);
+  const interes=calcInteres(e.monto_prestado,e.tasa_mensual||cfg.tasa,dias);
+  const nDias=prompt(`Renovar #${e.ticket}\nIntereses a cobrar: ${fmtMoney(interes)}\n\nNuevo plazo en días:`,cfg.plazo||30);
+  if(!nDias||isNaN(nDias))return;
+  const nf=new Date(hoy);nf.setDate(nf.getDate()+parseInt(nDias));
+  e.fecha_empeno=hoy.toISOString().split('T')[0];
+  e.fecha_vence=nf.toISOString().split('T')[0];
+  e.plazo_dias=parseInt(nDias);
+  e.renovaciones=(e.renovaciones||0)+1;
+  e.intereses_cobrados_parcial=(e.intereses_cobrados_parcial||0)+interes;
+  DB.set('empenos',emp);
+  closeModal();renderEmpenos();
+  alert(`🔄 Renovado por ${nDias} días.\nIntereses cobrados: ${fmtMoney(interes)}`);
+}
+
+function eliminarEmpeno(id){
+  if(!confirm('¿Eliminar este empeño? No se puede deshacer.'))return;
+  DB.set('empenos',DB.empenos().filter(x=>x.id!==id));
+  closeModal();renderEmpenos();renderDashboard();
+}
+
+// ---- NUEVO EMPEÑO ----
+function openModalEmpeno(cliId){
+  const cfg=DB.config();
+  const clientes=DB.clientes();
+  const opts=clientes.map(c=>`<option value="${c.id}" ${cliId===c.id?'selected':''}>${c.nombre} — ${c.doc}</option>`).join('');
+  showModal(`
+    <div class="modal-header">
+      <span class="modal-title">💎 Nuevo Empeño</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="habeas">🔒 Datos tratados conforme a la Ley 1581/2012 (Habeas Data). Solo personal autorizado accede a información sensible.</div>
+    <div class="form-group">
+      <label>Cliente *</label>
+      <select id="emp-cli">
+        <option value="">— Seleccionar cliente —</option>
+        ${opts}
+        <option value="__nuevo__">➕ Crear nuevo cliente</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Artículo empeñado *</label><input type="text" id="emp-art" placeholder="Ej: Cadena oro 18k, iPhone 14, Moto Honda..."></div>
+    <div class="form-group"><label>Descripción / características</label><textarea id="emp-desc" placeholder="Color, peso, serial, estado del artículo..."></textarea></div>
+    <div class="form-group">
+      <label>📷 Foto del artículo</label>
+      <div class="photo-preview" id="photo-prev" onclick="document.getElementById('emp-foto').click()">
+        <span style="font-size:32px">📸</span><span>Tomar foto o seleccionar imagen</span>
+      </div>
+      <input type="file" id="emp-foto" accept="image/*" capture="environment" style="display:none" onchange="prevFoto(this)">
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Monto prestado ($) *</label><input type="number" id="emp-monto" placeholder="0" min="0" step="1000" oninput="calcPrev()"></div>
+      <div class="form-group"><label>Tasa mensual (%)</label><input type="number" id="emp-tasa" value="${cfg.tasa||10}" step="0.5" min="0" max="100" oninput="calcPrev()"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Plazo (días)</label><input type="number" id="emp-plazo" value="${cfg.plazo||30}" min="1" oninput="calcPrev()"></div>
+      <div class="form-group"><label>Fecha empeño</label><input type="date" id="emp-fecha" value="${nowCO().toISOString().split('T')[0]}"></div>
+    </div>
+    <div id="emp-prev" style="background:rgba(201,168,76,0.08);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;display:none">
+      <div style="display:flex;justify-content:space-between"><span>Interés estimado al vencer:</span><span id="pi" style="color:var(--orange);font-weight:600"></span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px"><span>Total a cobrar al vencer:</span><span id="pt" style="color:var(--primary);font-weight:700"></span></div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="guardarEmpeno()">💾 Registrar empeño</button>
+  `);
+  if(cliId)setTimeout(()=>{const s=document.getElementById('emp-cli');if(s)s.value=cliId;},100);
+}
+function prevFoto(inp){
+  if(!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('photo-prev').innerHTML=`<img src="${e.target.result}">`};
+  r.readAsDataURL(inp.files[0]);
+}
+function calcPrev(){
+  const m=parseFloat(document.getElementById('emp-monto')?.value||0);
+  const t=parseFloat(document.getElementById('emp-tasa')?.value||10);
+  const p=parseInt(document.getElementById('emp-plazo')?.value||30);
+  const el=document.getElementById('emp-prev');if(!el)return;
+  if(!m){el.style.display='none';return;}
+  document.getElementById('pi').textContent=fmtMoney(calcInteres(m,t,p));
+  document.getElementById('pt').textContent=fmtMoney(m+calcInteres(m,t,p));
+  el.style.display='block';
+}
+function guardarEmpeno(){
+  const cliVal=document.getElementById('emp-cli')?.value;
+  if(!cliVal){alert('Selecciona un cliente');return;}
+  if(cliVal==='__nuevo__'){closeModal();openModalCliente(true);return;}
+  const art=document.getElementById('emp-art')?.value?.trim();
+  if(!art){alert('Ingresa el artículo');return;}
+  const monto=parseFloat(document.getElementById('emp-monto')?.value||0);
+  if(!monto||monto<=0){alert('Ingresa un monto válido');return;}
+  const tasa=parseFloat(document.getElementById('emp-tasa')?.value||10);
+  const plazo=parseInt(document.getElementById('emp-plazo')?.value||30);
+  const fecha=document.getElementById('emp-fecha')?.value||nowCO().toISOString().split('T')[0];
+  const fv=new Date(fecha+'T00:00:00');fv.setDate(fv.getDate()+plazo);
+  const cli=DB.clientes().find(c=>c.id===cliVal);
+  const emp=DB.empenos();
+  const ticket='T'+String(emp.length+1).padStart(5,'0');
+  const prevImg=document.querySelector('#photo-prev img');
+  const nuevo={
+    id:uid(),ticket,estado:'activo',
+    cliente_id:cliVal,cliente_nombre:cli?.nombre||'',cliente_doc:cli?.doc||'',
+    articulo:art,descripcion:document.getElementById('emp-desc')?.value||'',
+    monto_prestado:monto,tasa_mensual:tasa,plazo_dias:plazo,
+    fecha_empeno:fecha,fecha_vence:fv.toISOString().split('T')[0],
+    foto:prevImg?prevImg.src:null,renovaciones:0,intereses_pagados:0,total_cobrado:0
+  };
+  emp.push(nuevo);DB.set('empenos',emp);
+  closeModal();renderEmpenos();renderDashboard();
+  alert(`✅ Empeño #${ticket} registrado.\n${art} — ${fmtMoney(monto)}\nVence: ${fmtDateShort(fv.toISOString().split('T')[0])}`);
+}
+
+// ---- CLIENTES ----
+function renderClientes(){
+  let c=DB.clientes();
+  const q=(document.getElementById('search-clientes')?.value||'').toLowerCase();
+  if(q)c=c.filter(x=>(x.nombre+x.doc+x.tel).toLowerCase().includes(q));
+  c=c.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const el=document.getElementById('clientes-list');
+  const emp=DB.empenos();
+  if(!c.length){el.innerHTML='<div class="empty"><div class="empty-icon">👥</div><p>Sin clientes registrados</p><br><button class="btn btn-primary" onclick="openModalCliente()">➕ Agregar cliente</button></div>';return;}
+  el.innerHTML=c.map(x=>{
+    const act=emp.filter(e=>e.cliente_id===x.id&&e.estado==='activo').length;
+    return`<div class="list-item" onclick="verCliente('${x.id}')">
+      <div class="item-header"><span class="item-title">${x.nombre}</span>${act>0?`<span class="badge badge-active">${act} activos</span>`:''}
+      </div>
+      <div class="item-subtitle">📄 ${x.doc}</div>
+      <div class="item-meta"><span>📱 ${'*'.repeat(Math.max(0,String(x.tel||'').length-4))+String(x.tel||'').slice(-4)}</span><span>📍 ${x.ciudad||''}</span></div>
+    </div>`;}).join('');
+}
+function verCliente(id){
+  const c=DB.clientes().find(x=>x.id===id);if(!c)return;
+  const emp=DB.empenos().filter(e=>e.cliente_id===id);
+  const act=emp.filter(e=>e.estado==='activo');
+  showModal(`
+    <div class="modal-header"><span class="modal-title">👤 ${c.nombre}</span><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="card">
+      <div class="detail-row"><span class="detail-label">Documento</span><span class="detail-value">${c.tipo_doc||'CC'} ${'*'.repeat(Math.max(0,c.doc.length-4))+c.doc.slice(-4)}</span></div>
+      <div class="detail-row"><span class="detail-label">Teléfono</span><span class="detail-value">${c.tel?'*'.repeat(Math.max(0,c.tel.length-4))+c.tel.slice(-4):'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Ciudad</span><span class="detail-value">${c.ciudad||'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${c.email?c.email.replace(/(.{2}).+(@)/,'$1***$2'):'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Empeños activos</span><span class="detail-value" style="color:var(--primary)">${act.length}</span></div>
+      <div class="detail-row"><span class="detail-label">Total empeños</span><span class="detail-value">${emp.length}</span></div>
+    </div>
+    <h4 style="font-size:13px;color:var(--text2);margin-bottom:8px">Historial</h4>
+    ${emp.length===0?'<div style="font-size:13px;color:var(--text2)">Sin empeños</div>':
+      emp.sort((a,b)=>new Date(b.fecha_empeno)-new Date(a.fecha_empeno)).map(e=>`
+        <div class="list-item" onclick="closeModal();setTimeout(()=>verEmpeno('${e.id}'),300)">
+          <div class="item-header"><span>${e.articulo}</span><span class="badge badge-${e.estado==='rescatado'?'redeemed':'active'}">${e.estado}</span></div>
+          <div class="item-meta"><span>🎫 #${e.ticket}</span><span>${fmtMoney(e.monto_prestado)}</span><span>${fmtDateShort(e.fecha_empeno)}</span></div>
+        </div>`).join('')}
+    <div style="height:12px"></div>
+    <div class="form-row">
+      <button class="btn btn-primary" onclick="closeModal();openModalEmpeno('${c.id}')">💎 Nuevo empeño</button>
+      <button class="btn btn-secondary" onclick="editarCliente('${c.id}')">✏️ Editar datos</button>
+    </div>
+  `);
+}
+function openModalCliente(afterCreate){
+  showModal(`
+    <div class="modal-header"><span class="modal-title">👤 Nuevo Cliente</span><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="habeas">🔒 Los datos personales son tratados conforme a la Ley 1581/2012 (Habeas Data Colombia). Se requiere autorización expresa del titular.</div>
+    <div class="form-group"><label>Nombre completo *</label><input type="text" id="cn" placeholder="Nombre y apellidos completos"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Tipo doc.</label><select id="ct"><option>CC</option><option>NIT</option><option>CE</option><option>TI</option></select></div>
+      <div class="form-group"><label>Número documento *</label><input type="text" id="cd" placeholder="12345678"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Teléfono / WhatsApp</label><input type="tel" id="ctel" placeholder="300..."></div>
+      <div class="form-group"><label>Ciudad</label><input type="text" id="ccity" placeholder="Caucasia..."></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="cem" placeholder="correo@ejemplo.com"></div>
+    <div class="form-group"><label>Dirección</label><input type="text" id="cdir" placeholder="Carrera / Calle..."></div>
+    <div class="form-group" style="display:flex;align-items:flex-start;gap:8px">
+      <input type="checkbox" id="ch" style="width:auto;margin-top:3px;flex-shrink:0">
+      <label for="ch" style="font-size:12px;color:var(--text)">Autorizo el tratamiento de mis datos personales conforme a la política de privacidad y la Ley 1581/2012</label>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="guardarCliente(${!!afterCreate})">💾 Guardar cliente</button>
+  `);
+}
+function guardarCliente(after){
+  const nombre=document.getElementById('cn')?.value?.trim();
+  const doc=document.getElementById('cd')?.value?.trim();
+  if(!nombre){alert('Ingresa el nombre');return;}
+  if(!doc){alert('Ingresa el documento');return;}
+  if(!document.getElementById('ch')?.checked){alert('El cliente debe autorizar el tratamiento de sus datos');return;}
+  const cli=DB.clientes();
+  if(cli.find(c=>c.doc===doc)){alert('Ya existe un cliente con ese documento');return;}
+  const nuevo={
+    id:uid(),nombre,doc,tipo_doc:document.getElementById('ct')?.value||'CC',
+    tel:document.getElementById('ctel')?.value||'',
+    ciudad:document.getElementById('ccity')?.value||'',
+    email:document.getElementById('cem')?.value||'',
+    dir:document.getElementById('cdir')?.value||'',
+    habeas:true,fecha_reg:nowCO().toISOString().split('T')[0]
+  };
+  cli.push(nuevo);DB.set('clientes',cli);
+  closeModal();renderClientes();
+  if(after)setTimeout(()=>openModalEmpeno(nuevo.id),300);
+  else alert(`✅ Cliente ${nombre} registrado.`);
+}
+function editarCliente(id){
+  const c=DB.clientes().find(x=>x.id===id);if(!c)return;
+  showModal(`
+    <div class="modal-header"><span class="modal-title">✏️ Editar Cliente</span><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="form-group"><label>Nombre completo</label><input type="text" id="en" value="${c.nombre}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Teléfono</label><input type="tel" id="etel" value="${c.tel||''}"></div>
+      <div class="form-group"><label>Ciudad</label><input type="text" id="ecity" value="${c.ciudad||''}"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="eem" value="${c.email||''}"></div>
+    <div class="form-group"><label>Dirección</label><input type="text" id="edir" value="${c.dir||''}"></div>
+    <button class="btn btn-primary btn-full" onclick="updCliente('${id}')">💾 Actualizar</button>
+    <div style="height:8px"></div>
+    <button class="btn btn-danger btn-full" onclick="delCliente('${id}')">🗑️ Eliminar cliente</button>
+  `);
+}
+function updCliente(id){
+  const cli=DB.clientes();const c=cli.find(x=>x.id===id);if(!c)return;
+  c.nombre=document.getElementById('en').value.trim()||c.nombre;
+  c.tel=document.getElementById('etel').value;
+  c.ciudad=document.getElementById('ecity').value;
+  c.email=document.getElementById('eem').value;
+  c.dir=document.getElementById('edir').value;
+  DB.set('clientes',cli);closeModal();renderClientes();alert('✅ Cliente actualizado');
+}
+function delCliente(id){
+  const tiene=DB.empenos().some(e=>e.cliente_id===id);
+  if(!confirm(tiene?'Este cliente tiene empeños registrados. ¿Eliminar de todas formas?':'¿Eliminar este cliente?'))return;
+  DB.set('clientes',DB.clientes().filter(c=>c.id!==id));
+  closeModal();renderClientes();
+}
+
+// ---- INVENTARIO ----
+function filterInv(f,el){
+  curFilter.inv=f;
+  document.querySelectorAll('#sec-inventario .tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  renderInventario();
+}
+function renderInventario(){
+  const hoy=nowCO();
+  let emp=DB.empenos();
+  const q=(document.getElementById('search-inv')?.value||'').toLowerCase();
+  const f=curFilter.inv;
+  if(f==='en-custodia')emp=emp.filter(e=>e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')>=hoy);
+  else if(f==='rescatados')emp=emp.filter(e=>e.estado==='rescatado');
+  else if(f==='vencidos')emp=emp.filter(e=>e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')<hoy);
+  if(q)emp=emp.filter(e=>(e.articulo+(e.descripcion||'')).toLowerCase().includes(q));
+  const el=document.getElementById('inventario-list');
+  if(!emp.length){el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><p>Sin artículos en esta categoría</p></div>';return;}
+  el.innerHTML=emp.map(e=>`
+    <div class="list-item" onclick="verEmpeno('${e.id}')">
+      <div class="item-header">
+        <span class="item-title">${e.articulo}</span>
+        <span class="badge badge-${e.estado==='rescatado'?'redeemed':'active'}">${e.estado==='rescatado'?'Rescatado':'En custodia'}</span>
+      </div>
+      <div class="item-subtitle">${e.descripcion||'Sin descripción adicional'}</div>
+      <div class="item-meta"><span>🎫 #${e.ticket}</span><span>👤 ${e.cliente_nombre}</span><span>📅 ${fmtDateShort(e.fecha_vence)}</span></div>
+      ${e.foto?`<img src="${e.foto}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-top:8px">`:''}
+    </div>`).join('');
+}
+
+// ---- REPORTES ----
+function initReportes(){
+  const hoy=nowCO();
+  const p1=new Date(hoy.getFullYear(),hoy.getMonth(),1).toISOString().split('T')[0];
+  document.getElementById('rpt-desde').value=p1;
+  document.getElementById('rpt-hasta').value=hoy.toISOString().split('T')[0];
+}
+function generarReporte(){
+  const d1=new Date(document.getElementById('rpt-desde').value+'T00:00:00');
+  const d2=new Date(document.getElementById('rpt-hasta').value+'T23:59:59');
+  if(!d1||!d2){alert('Selecciona el rango');return;}
+  const emp=DB.empenos().filter(e=>{const f=new Date(e.fecha_empeno+'T00:00:00');return f>=d1&&f<=d2;});
+  const resc=emp.filter(e=>e.estado==='rescatado');
+  const act=emp.filter(e=>e.estado==='activo');
+  const venc=emp.filter(e=>e.estado==='activo'&&new Date(e.fecha_vence+'T00:00:00')<new Date());
+  document.getElementById('reporte-resultado').innerHTML=`
+    <div class="card">
+      <div class="card-header"><span class="card-title">📊 Resumen del período</span></div>
+      <div class="detail-row"><span class="detail-label">Total empeños</span><span class="detail-value">${emp.length}</span></div>
+      <div class="detail-row"><span class="detail-label">Activos al día</span><span class="detail-value" style="color:var(--green)">${act.length-venc.length}</span></div>
+      <div class="detail-row"><span class="detail-label">Vencidos</span><span class="detail-value" style="color:var(--red)">${venc.length}</span></div>
+      <div class="detail-row"><span class="detail-label">Rescatados</span><span class="detail-value" style="color:var(--blue)">${resc.length}</span></div>
+      <div class="detail-row"><span class="detail-label">Total prestado</span><span class="detail-value" style="color:var(--primary)">${fmtMoney(emp.reduce((s,e)=>s+e.monto_prestado,0))}</span></div>
+      <div class="detail-row"><span class="detail-label">Capital recuperado</span><span class="detail-value" style="color:var(--green)">${fmtMoney(resc.reduce((s,e)=>s+(e.monto_prestado||0),0))}</span></div>
+      <div class="detail-row"><span class="detail-label">Intereses cobrados</span><span class="detail-value" style="color:var(--orange)">${fmtMoney(resc.reduce((s,e)=>s+(e.intereses_pagados||0),0))}</span></div>
+      <div class="detail-row"><span class="detail-label">Total ingresos</span><span class="detail-value" style="color:var(--primary);font-weight:700">${fmtMoney(resc.reduce((s,e)=>s+(e.total_cobrado||0),0))}</span></div>
+      <div class="detail-row"><span class="detail-label">Capital en calle</span><span class="detail-value">${fmtMoney(act.reduce((s,e)=>s+e.monto_prestado,0))}</span></div>
+    </div>
+    <button class="btn btn-success btn-full" onclick="exportCSV()">📥 Exportar a Excel / CSV</button>
+  `;
+  // Store for export
+  window._rptEmp=emp;
+}
+function exportCSV(){
+  const emp=window._rptEmp||DB.empenos();
+  const h=['Ticket','Cliente','Doc cliente','Artículo','Descripción','Monto prestado','Tasa %','Plazo días','Fecha empeño','Fecha vence','Estado','Intereses pagados','Total cobrado','Renovaciones'];
+  const rows=emp.map(e=>[e.ticket,e.cliente_nombre,e.cliente_doc||'',e.articulo,e.descripcion||'',e.monto_prestado,e.tasa_mensual,e.plazo_dias,e.fecha_empeno,e.fecha_vence,e.estado,e.intereses_pagados||0,e.total_cobrado||0,e.renovaciones||0]);
+  const csv=[h,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`reporte_empenos_${nowCO().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+// ---- CONFIG ----
+function loadConfigFields(){
+  const cfg=DB.config();
+  ['nombre','dir','tel','nit'].forEach(k=>{const el=document.getElementById('cfg-'+k);if(el)el.value=cfg[k]||'';});
+  document.getElementById('cfg-tasa').value=cfg.tasa||10;
+  document.getElementById('cfg-plazo').value=cfg.plazo||30;
+  document.getElementById('cfg-gracia').value=cfg.gracia||5;
+}
+function guardarConfig(){
+  const cfg=DB.config();
+  cfg.nombre=document.getElementById('cfg-nombre').value;
+  cfg.dir=document.getElementById('cfg-dir').value;
+  cfg.tel=document.getElementById('cfg-tel').value;
+  cfg.nit=document.getElementById('cfg-nit').value;
+  cfg.tasa=parseFloat(document.getElementById('cfg-tasa').value)||10;
+  cfg.plazo=parseInt(document.getElementById('cfg-plazo').value)||30;
+  cfg.gracia=parseInt(document.getElementById('cfg-gracia').value)||5;
+  const np=document.getElementById('cfg-pin').value;
+  if(np){if(np.length!==4||isNaN(np)){alert('PIN debe ser exactamente 4 dígitos numéricos');return;}cfg.pin=np;document.getElementById('cfg-pin').value='';}
+  DB.set('config',cfg);
+  document.getElementById('topbar-biz-name').textContent=cfg.nombre||'EmpeñoApp';
+  alert('✅ Configuración guardada correctamente');
+}
+function exportarTodo(){
+  const d={empenos:DB.empenos(),clientes:DB.clientes(),config:DB.config(),fecha:nowCO().toISOString()};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.download=`backup_empenos_${nowCO().toISOString().split('T')[0]}.json`;a.click();
+}
+function importarBackup(inp){
+  if(!inp.files[0])return;
+  if(!confirm('¿Importar backup? Esto reemplazará todos los datos actuales.'))return;
+  const r=new FileReader();
+  r.onload=e=>{try{const d=JSON.parse(e.target.result);
+    if(d.empenos)DB.set('empenos',d.empenos);
+    if(d.clientes)DB.set('clientes',d.clientes);
+    if(d.config)DB.set('config',d.config);
+    alert('✅ Backup importado correctamente');initApp();
+  }catch(err){alert('❌ Error al importar el archivo');}};
+  r.readAsText(inp.files[0]);
+}
+
+// ---- IMPRIMIR ----
+function imprimirTicket(id){
+  const e=DB.empenos().find(x=>x.id===id);if(!e)return;
+  const cfg=DB.config();
+  const dias=e.plazo_dias;
+  const int=calcInteres(e.monto_prestado,e.tasa_mensual||cfg.tasa,dias);
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>Ticket #${e.ticket}</title>
+  <style>body{font-family:monospace;max-width:280px;margin:16px auto;font-size:12px;line-height:1.9}h2{text-align:center;font-size:15px}hr{border:1px dashed #999}.total{font-weight:700;font-size:14px}</style></head><body>
+  <h2>${cfg.nombre||'Casa de Empeño'}</h2>
+  ${cfg.dir?`<div style="text-align:center;font-size:11px">${cfg.dir}</div>`:''}
+  ${cfg.tel?`<div style="text-align:center;font-size:11px">Tel: ${cfg.tel}</div>`:''}
+  <hr>
+  <div>TICKET #: <b>${e.ticket}</b></div>
+  <div>CLIENTE: ${e.cliente_nombre}</div>
+  <div>ARTÍCULO: ${e.articulo}</div>
+  ${e.descripcion?`<div>DESC: ${e.descripcion}</div>`:''}
+  <hr>
+  <div>MONTO PRESTADO: ${fmtMoney(e.monto_prestado)}</div>
+  <div>TASA: ${e.tasa_mensual}% mensual</div>
+  <div>PLAZO: ${e.plazo_dias} días</div>
+  <div>FECHA EMPEÑO: ${e.fecha_empeno}</div>
+  <div>FECHA VENCE: ${e.fecha_vence}</div>
+  <div>INT. ESTIMADO: ${fmtMoney(int)}</div>
+  <div class="total">TOTAL AL VENCER: ${fmtMoney(e.monto_prestado+int)}</div>
+  <hr>
+  <div style="text-align:center;font-size:10px;margin-top:8px">Conserve este comprobante para reclamar su artículo</div>
+  <script>setTimeout(()=>{window.print();window.close();},300)<\/script>
+  </body></html>`);w.document.close();
+}
+
+// ---- MODAL ----
+function showModal(html){
+  const ov=document.createElement('div');
+  ov.className='modal-overlay';ov.id='active-modal';
+  ov.innerHTML=`<div class="modal">${html}</div>`;
+  ov.addEventListener('click',e=>{if(e.target===ov)closeModal();});
+  document.getElementById('modal-container').appendChild(ov);
+}
+function closeModal(){const m=document.getElementById('active-modal');if(m)m.remove();}
+
+// ---- SW ----
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
